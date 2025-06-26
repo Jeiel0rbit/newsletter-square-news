@@ -1,0 +1,7 @@
+{
+  "token": "TOKEN"
+  "channelId": "ID_CHANNEL",
+  "apiEndpoint": "https://www.tabnews.com.br/api/v1/contents/NewsletterOficial",
+  "checkInterval": 300000,
+  "adminUserId": "ID_SUPPORT"
+}

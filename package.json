@@ -1,0 +1,21 @@
+{
+  "name": "newsletter-bot",
+  "version": "1.0.0",
+  "description": "Um bot para notificar atualizações de uma newsletter no Discord.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "discordjs",
+    "newsletter"
+  ],
+  "author": "Jeiel Miranda",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.8",
+    "discord.js": "^14.14.1"
+  }
+}
