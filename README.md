@@ -11,6 +11,8 @@ Este é um bot para Discord projetado para notificar sobre novas publicações d
   * **Botão de Acesso:** Inclui um botão que leva diretamente para a publicação original, ou seja, fonte da notícia.
   * **Notificação de Erro:** Em caso de falha crítica na verificação, o bot notifica um administrador via mensagem direta.
   * **Fácil Configuração:** Todas as informações sensíveis e de configuração são centralizadas no arquivo `config.json`. Ótimo se estiveres rodando em um servidor próprio.
+  * **Slash Command:** Comando `doar` via chave pix para usuário copiar e `set` para setar notícias de um canal desejado.
+  > Slash Command adicionado no dia 24/07/2025. 
 
 ## 🚀 Começando
 
@@ -53,6 +55,7 @@ Antes de iniciar o bot, você precisa configurar suas informações no arquivo `
   "channelId": "ID_DO_CANAL_DE_NOTIFICACOES",
   "apiEndpoint": "https://www.tabnews.com.br/api/v1/contents/NewsletterOficial",
   "checkInterval": 300000,
+    "apiKeyBeta": "************", // disponibilizado por filipe deschamps
   "adminUserId": "SEU_ID_DE_USUARIO_DISCORD"
 }
 ```

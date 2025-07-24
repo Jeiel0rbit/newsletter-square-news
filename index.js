@@ -1,6 +1,10 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
 const axios = require('axios');
-const { token, channelId, apiEndpoint, checkInterval, adminUserId } = require('./config.json');
+const fs = require('fs');
+const path = require('path');
+
+const configPath = path.join(__dirname, 'config.json');
+let config = require(configPath);
 
 const client = new Client({
     intents: [
@@ -11,78 +15,102 @@ const client = new Client({
 
 let lastKnownId = null;
 
-// Verifica por novas publicações, ordena para encontrar a mais recente e envia uma notificação.
 async function checkForUpdates() {
     try {
         const newApiEndpoint = 'https://www.tabnews.com.br/api/v1/contents/NewsletterOficial?strategy=new';
-        console.log('[LOG] Buscando a lista de publicações mais recentes...');
-        const response = await axios.get(newApiEndpoint);
+
+        const apiConfig = {
+            headers: {
+                'Cookie': `api_key_beta=${config.apiKeyBeta}`
+            }
+        };
+
+        const response = await axios.get(newApiEndpoint, apiConfig);
 
         if (response.data && response.data.length > 0) {
             response.data.sort((a, b) => new Date(b.published_at) - new Date(a.published_at));
 
             const latestPostSummary = response.data[0];
-            console.log(`[LOG] Post mais recente encontrado (ID: ${latestPostSummary.id}, Data: ${latestPostSummary.published_at})`);
 
             if (lastKnownId === null || latestPostSummary.id !== lastKnownId) {
-                if (lastKnownId === null) console.log(`[LOG] Primeira verificação. Preparando para enviar o post.`);
-                else console.log(`[LOG] Nova atualização encontrada! ID: ${latestPostSummary.id}`);
-                
                 lastKnownId = latestPostSummary.id;
 
-                const fullPostResponse = await axios.get(`https://www.tabnews.com.br/api/v1/contents/${latestPostSummary.owner_username}/${latestPostSummary.slug}`);
+                const fullPostResponse = await axios.get(`https://www.tabnews.com.br/api/v1/contents/${latestPostSummary.owner_username}/${latestPostSummary.slug}`, apiConfig);
                 const fullPost = fullPostResponse.data;
-                
-                const channel = await client.channels.fetch(channelId);
 
-                if (channel) {
-                    const cleanBody = fullPost.body
-                        .replace(/\!\[.*?\]\(.*?\)/g, '') 
-                        .replace(/[`*#_~>|]/g, '')     
-                        .trim();                         
+                const cleanBody = fullPost.body
+                    .replace(/\!\[.*?\]\(.*?\)/g, '')
+                    .replace(/[`*#_~>|]/g, '')
+                    .trim();
 
-                    const newPostEmbed = new EmbedBuilder()
-                        .setColor('#5865F2') 
-                        .setTitle(fullPost.title)
-                        .setDescription(cleanBody)
-                        .setTimestamp(new Date(fullPost.published_at))
-                        .setFooter({ text: 'Newsletter • Nova Publicação' });
-                    
-                    const sourceButton = new ButtonBuilder()
-                        .setLabel('Fonte')
-                        .setStyle(ButtonStyle.Link)
-                        .setURL(fullPost.source_url);
+                const newPostEmbed = new EmbedBuilder()
+                    .setColor('#5865F2')
+                    .setTitle(fullPost.title)
+                    .setDescription(cleanBody)
+                    .setTimestamp(new Date(fullPost.published_at))
+                    .setFooter({ text: 'Newsletter • Nova Publicação' });
 
-                    const row = new ActionRowBuilder().addComponents(sourceButton);
+                const sourceButton = new ButtonBuilder()
+                    .setLabel('Fonte')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(fullPost.source_url);
 
-                    await channel.send({ embeds: [newPostEmbed], components: [row] });
-                    console.log('[LOG] MENSAGEM ENVIADA COM SUCESSO!');
+                const row = new ActionRowBuilder().addComponents(sourceButton);
+
+                for (const guildId in config.guilds) {
+                    const channelId = config.guilds[guildId];
+                    const channel = await client.channels.fetch(channelId);
+                    if (channel) {
+                        await channel.send({ embeds: [newPostEmbed], components: [row] });
+                    }
                 }
-            } else {
-                console.log('[LOG] Nenhuma nova atualização encontrada.');
             }
-        } else {
-            console.log('[LOG] A resposta da API não continha dados.');
         }
     } catch (error) {
         console.error('[ERRO FATAL] Ocorreu uma falha no ciclo de verificação:', error.message);
         try {
-            const adminUser = await client.users.fetch(adminUserId);
+            const adminUser = await client.users.fetch(config.adminUserId);
             if (adminUser) {
                 await adminUser.send(`🚨 **Alerta de Erro no Bot de Notícias!** 🚨\n\nOcorreu um erro crítico que impediu o bot de funcionar corretamente. Por favor, verifique os logs do servidor para mais detalhes.\n\n**Erro:** \`${error.message}\``);
-                console.log(`[LOG] Notificação de erro enviada para o administrador (${adminUserId}).`);
             }
-        } catch (notificationError) {
+        }
+        catch (notificationError) {
             console.error('[ERRO SECUNDÁRIO] Falha ao tentar notificar o administrador sobre o erro.', notificationError);
         }
     }
 }
 
-// Inicia o bot, executa a verificação uma vez e a agenda para rodar em intervalos.
-client.once('ready', () => {
-    console.log(`Bot ${client.user.tag} está online!`);
-    checkForUpdates();
-    setInterval(checkForUpdates, checkInterval);
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isCommand()) return;
+
+    const { commandName, options, guild, member } = interaction;
+
+    if (commandName === 'set') {
+        if (!member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            return interaction.reply({ content: 'Você precisa ser um administrador para usar este comando.', ephemeral: true });
+        }
+
+        const channel = options.getChannel('canal');
+        config.guilds[guild.id] = channel.id;
+
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+        interaction.reply({ content: `O canal de notícias foi definido para ${channel}.`, ephemeral: true });
+    } else if (commandName === 'doar') {
+        const donationEmbed = new EmbedBuilder()
+            .setColor('#5865F2')
+            .setTitle('Apoie o desenvolvedor')
+            .setDescription('Sua doação ajuda a manter o bot funcionando e em constante desenvolvimento. Abaixo está a chave PIX para doação:')
+            .addFields({ name: 'Chave PIX Aleatória', value: '`08a19869-90c3-48ae-8d8b-98d6ca58d1d8`' });
+
+        interaction.reply({ embeds: [donationEmbed], ephemeral: true });
+    }
 });
 
-client.login(token);
+client.once('ready', () => {
+    console.log('Bot is online!');
+    checkForUpdates();
+    setInterval(checkForUpdates, config.checkInterval);
+});
+
+client.login(config.token);

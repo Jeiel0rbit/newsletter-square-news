@@ -1,7 +1,9 @@
 {
   "token": "TOKEN",
-  "channelId": "ID_CHANNEL",
+  "clientId": "1387780583257673798",
   "apiEndpoint": "https://www.tabnews.com.br/api/v1/contents/NewsletterOficial?with_children=false",
   "checkInterval": 300000,
-  "adminUserId": "ID_SUPPORT"
+  "adminUserId": "1372378728658636821",
+  "apiKeyBeta": "************",
+  "guilds": {}
 }
