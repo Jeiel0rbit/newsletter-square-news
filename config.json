@@ -1,9 +1,10 @@
 {
-  "token": "TOKEN",
+  "token": "token",
   "clientId": "1387780583257673798",
   "apiEndpoint": "https://www.tabnews.com.br/api/v1/contents/NewsletterOficial?with_children=false",
   "checkInterval": 300000,
   "adminUserId": "1372378728658636821",
-  "apiKeyBeta": "************",
-  "guilds": {}
+  "apiKeyBeta": "by filipedeschamps",
+  "guilds": {
+  }
 }
